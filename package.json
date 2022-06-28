@@ -1,5 +1,5 @@
 {
-  "name": "rope-js",
+  "name": "pedigree-tools-js",
   "version": "1.0.0",
   "description": "tools for manipulating pedigrees.",
   "main": "dist/index.js",
