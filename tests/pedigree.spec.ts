@@ -1,4 +1,11 @@
-import { DefiniteIdentifier, PedigreeEntry, strict, permissive, validatePedigree } from "../src/pedigree";
+import {
+  DefiniteIdentifier,
+  PedigreeEntry,
+  strict,
+  permissive,
+  validatePedigree,
+  PedigreeValidationOptions,
+} from "../src/pedigree";
 
 import * as mocha from "mocha";
 import * as chai from "chai";
@@ -303,6 +310,78 @@ describe("Validation on some randomly generated pedigrees", () => {
         S7: ["Individual is not properly connected to pedigree."],
         S10: ["Individual is not properly connected to pedigree."],
       },
+    });
+  });
+});
+
+describe("test cases from UI testing", () => {
+  it("test 1", () => {
+    const ped: PedigreeEntry[] = [
+      { family: "subj_2_family", sample: "subj_2_sample_21", father: "subj_2a_sample_23", mother: "subj_2b_sample_24", sex: "1" },
+      { family: "subj_2_family", sample: "subj_2_sample_22", father: null, mother: null, sex: "1" },
+      { family: "subj_2_family", sample: "subj_2a_sample_23", father: null, mother: null, sex: "1" },
+      { family: "subj_2_family", sample: "subj_2b_sample_24", father: null, mother: null, sex: "0" },
+      {
+        family: "subj_31_family",
+        sample: "subject_31_sample_31",
+        father: null,
+        mother: null,
+        sex: "2",
+      },
+      { family: "subj_31_family", sample: "subject_31_sample_32", father: null, mother: null, sex: "2" },
+    ];
+    const pedigreeOptions: PedigreeValidationOptions = {
+      empty: "ignore",
+      duplicates: "warning",
+      inconsistentSex: "ignore",
+      multipleFamilies: "ignore",
+      oneFamily: "ignore",
+      fullyConnected: "warning",
+      cycles: "error",
+    };
+    const res = validatePedigree(ped, pedigreeOptions);
+    //console.log(JSON.stringify(res));
+    expect(res).to.eql({
+      ok: true,
+      reasons: ["At least one individual is not properly connected to family."],
+      problematic: new Set<DefiniteIdentifier>(["subj_2_sample_22", "subject_31_sample_32"]),
+      whys: {
+        subj_2_sample_22: ["Individual is not properly connected to pedigree."],
+        subject_31_sample_32: ["Individual is not properly connected to pedigree."],
+      },
+    });
+  });
+  it("test 2", () => {
+    const ped: PedigreeEntry[] = [
+      { family: "subj_2_family", sample: "subj_2_sample_21", father: "subj_2a_sample_23", mother: "subj_2b_sample_24", sex: "1" },
+      { family: "subj_2_family", sample: "subj_2_sample_22", father: "subj_2_sample_21", mother: null, sex: "1" },
+      { family: "subj_2_family", sample: "subj_2a_sample_23", father: null, mother: null, sex: "1" },
+      { family: "subj_2_family", sample: "subj_2b_sample_24", father: null, mother: null, sex: "0" },
+      {
+        family: "subj_31_family",
+        sample: "subject_31_sample_31",
+        father: "subject_31_sample_31",
+        mother: "subject_31_sample_32",
+        sex: "2",
+      },
+      { family: "subj_31_family", sample: "subject_31_sample_32", father: null, mother: null, sex: "2" },
+    ];
+    const pedigreeOptions: PedigreeValidationOptions = {
+      empty: "ignore",
+      duplicates: "warning",
+      inconsistentSex: "ignore",
+      multipleFamilies: "ignore",
+      oneFamily: "ignore",
+      fullyConnected: "warning",
+      cycles: "error",
+    };
+    const res = validatePedigree(ped, pedigreeOptions);
+    //console.log(JSON.stringify(res));
+    expect(res).to.eql({
+      ok: false,
+      reasons: ["There was at least one instance of someone being their own ancestor."],
+      problematic: new Set<DefiniteIdentifier>(["subject_31_sample_31"]),
+      whys: { subject_31_sample_31: ["Sample is an ancestor of itself."] },
     });
   });
 });

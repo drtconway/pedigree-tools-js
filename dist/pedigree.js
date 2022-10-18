@@ -182,6 +182,8 @@ function validatePedigree(ped, options = exports.strict) {
     if (inconsistentSexDads.size > 0) {
         addProblem(options, result, "inconsistentSex", "There is at least one sample that occurs as a father but is not male.", zip(inconsistentSexDads, "Person is not male, but occurs as a father."));
     }
+    const unconnected = [];
+    const cyclic = new Set();
     // Now process families one by one.
     //
     for (const famid in fams) {
@@ -267,14 +269,12 @@ function validatePedigree(ped, options = exports.strict) {
             }
             // Step 3b: flag samples from the not-biggest groups.
             //
-            const unconnected = [];
             for (let who of everyone) {
                 if (maxSet.has(who)) {
                     continue;
                 }
                 unconnected.push([who, "Individual is not properly connected to pedigree."]);
             }
-            addProblem(options, result, "fullyConnected", "At least one individual is not properly connected to family.", unconnected);
         }
         // Now check that everyone is stratified, that is,
         // there are no cycles in the graph.
@@ -282,12 +282,15 @@ function validatePedigree(ped, options = exports.strict) {
         const children = [];
         for (const who in child) {
             for (const kid of child[who]) {
+                if (who == kid) {
+                    cyclic.add(who);
+                    continue;
+                }
                 children.push([who, kid]);
             }
         }
         const G = new graph_1.Graph(everyone, children);
         const sccs = algorithms_js_1.graph.tarjan(G);
-        const cyclic = new Set();
         for (let scc of sccs) {
             // Every strongly connected component should be singleton,
             // otherwise it's a cycle, and we should report it.
@@ -297,9 +300,12 @@ function validatePedigree(ped, options = exports.strict) {
                 }
             }
         }
-        if (cyclic.size > 0) {
-            addProblem(options, result, "cycles", "There was at least one instance of someone being their own ancestor.", zip(cyclic, "Sample is an ancestor of itself."));
-        }
+    }
+    if (unconnected.length > 0) {
+        addProblem(options, result, "fullyConnected", "At least one individual is not properly connected to family.", unconnected);
+    }
+    if (cyclic.size > 0) {
+        addProblem(options, result, "cycles", "There was at least one instance of someone being their own ancestor.", zip(cyclic, "Sample is an ancestor of itself."));
     }
     return result;
 }
